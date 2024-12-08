@@ -1,5 +1,6 @@
 package com.imoonday.injuryrecord.client;
 
+import com.imoonday.injuryrecord.data.DamageData;
 import com.imoonday.injuryrecord.data.DamageRecord;
 
 import java.util.HashMap;
@@ -34,5 +35,16 @@ public class ClientDamageRecordsCache {
 
     public void updateRecord(UUID uuid, DamageRecord damageRecord) {
         clientDamageRecords.put(uuid, damageRecord);
+    }
+
+    public boolean addInjury(UUID uuid, DamageData data) {
+        DamageRecord record = clientDamageRecords.get(uuid);
+        if (record != null) {
+            record.addInjury(data);
+            return true;
+        } else {
+            ClientUtils.requestRecords(uuid, true);
+            return false;
+        }
     }
 }

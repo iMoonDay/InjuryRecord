@@ -1,5 +1,6 @@
 package com.imoonday.injuryrecord.client;
 
+import com.imoonday.injuryrecord.data.DamageData;
 import com.imoonday.injuryrecord.network.Network;
 import com.imoonday.injuryrecord.network.RequestRecordsC2SRequest;
 import net.minecraft.client.Minecraft;
@@ -21,6 +22,13 @@ public class ClientUtils {
         Screen screen = Minecraft.getInstance().screen;
         if (screen instanceof DamageRecordListScreen recordListScreen) {
             recordListScreen.updateList();
+        }
+    }
+
+    public static void onReceivedNewData(UUID uuid, DamageData data) {
+        Screen screen = Minecraft.getInstance().screen;
+        if (screen instanceof DamageRecordListScreen recordListScreen) {
+            recordListScreen.updateData(uuid, data);
         }
     }
 

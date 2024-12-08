@@ -64,17 +64,12 @@ public class HistoricalInjuryData extends SavedData {
         return damageRecords.get(uuid);
     }
 
-    public boolean addInjury(UUID uuid, DamageData data) {
-        DamageRecord record = damageRecords.get(uuid);
-        if (record != null) {
-            record.addInjury(data);
-            return true;
-        }
-        return false;
+    public void addInjury(Player player, DamageData data) {
+        damageRecords.computeIfAbsent(player.getUUID(), uuid -> new DamageRecord(uuid, player.getDisplayName())).addInjury(data);
     }
 
-    public void addInjury(Player player, DamageSource source, boolean isDead, float amount, long time) {
-        damageRecords.computeIfAbsent(player.getUUID(), uuid -> new DamageRecord(uuid, player.getDisplayName())).addInjury(source, amount, GlobalPos.of(player.level.dimension(), player.blockPosition()), time, isDead, source.getLocalizedDeathMessage(player));
+    public DamageData addInjury(Player player, DamageSource source, boolean isDead, float amount, long time) {
+        return damageRecords.computeIfAbsent(player.getUUID(), uuid -> new DamageRecord(uuid, player.getDisplayName())).addInjury(source, amount, GlobalPos.of(player.level.dimension(), player.blockPosition()), time, isDead, source.getLocalizedDeathMessage(player));
     }
 
     public List<DamageData> getInjuries(Player player) {

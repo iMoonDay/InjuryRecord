@@ -120,6 +120,14 @@ public class DamageRecordListScreen extends Screen {
         }
     }
 
+    public void updateData(UUID uuid, DamageData data) {
+        if (this.selectedRecord != null && this.selectedRecord.getUuid().equals(uuid)) {
+            this.damageDataInfo.addData(data);
+        } else {
+            this.damageRecordList.addInjury(uuid, data);
+        }
+    }
+
     public void requestFullData() {
         if (selectedRecord != null) {
             ClientUtils.requestRecords(selectedRecord.getUuid(), includeOffline);
@@ -213,6 +221,10 @@ public class DamageRecordListScreen extends Screen {
             }
         }
 
+        public void addInjury(UUID uuid, DamageData data) {
+            children().stream().filter(entry -> entry.record.getUuid().equals(uuid)).findFirst().ifPresent(entry -> entry.addInjury(data));
+        }
+
         public class Entry extends ObjectSelectionList.Entry<DamageRecordList.Entry> {
 
             private final DamageRecord record;
@@ -225,6 +237,7 @@ public class DamageRecordListScreen extends Screen {
             public @NotNull Component getNarration() {
                 return record.getName();
             }
+
 
             @Override
             public void render(@NotNull PoseStack pPoseStack, int pIndex, int pTop, int pLeft, int pWidth, int pHeight, int pMouseX, int pMouseY, boolean pIsMouseOver, float pPartialTick) {
@@ -251,11 +264,14 @@ public class DamageRecordListScreen extends Screen {
                 }
                 return super.mouseClicked(pMouseX, pMouseY, pButton);
             }
+
+            public void addInjury(DamageData data) {
+                record.addInjury(data);
+            }
         }
     }
 
     public class DamageDataInfo extends ObjectSelectionList<DamageDataInfo.Entry> {
-
 
         public DamageDataInfo(Minecraft pMinecraft, int pWidth, int pHeight, int pY0, int pY1, int pItemHeight) {
             super(pMinecraft, pWidth, pHeight, pY0, pY1, pItemHeight);
@@ -289,6 +305,15 @@ public class DamageRecordListScreen extends Screen {
         @Override
         protected int getScrollbarPosition() {
             return this.x1 - 6;
+        }
+
+        public void addData(DamageData data) {
+            boolean onBottom = this.getScrollAmount() >= this.getMaxScroll();
+            Entry entry = new Entry(data);
+            addEntry(entry);
+            if (onBottom) {
+                ensureVisible(entry);
+            }
         }
 
         public class Entry extends ObjectSelectionList.Entry<DamageDataInfo.Entry> {

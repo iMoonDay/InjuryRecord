@@ -23,7 +23,7 @@ public class DamageRecord {
     private final UUID uuid;
     private final Component name;
     private final List<DamageData> injuries = new ArrayList<>();
-    private boolean isIncomplete = false;
+    private boolean isIncomplete;
 
     public DamageRecord(UUID uuid, Component name) {
         this.uuid = uuid;
@@ -54,10 +54,11 @@ public class DamageRecord {
         handleUpLimit(MAX_DATA_COUNT);
     }
 
-    public void addInjury(DamageSource source, float amount, GlobalPos location, long time, boolean isDead, @Nullable Component deathMessage) {
+    public DamageData addInjury(DamageSource source, float amount, GlobalPos location, long time, boolean isDead, @Nullable Component deathMessage) {
         DamageData data = new DamageData(source, amount, location, time, isDead, deathMessage);
         injuries.add(data);
         handleUpLimit(MAX_DATA_COUNT);
+        return data;
     }
 
     public void setInjuries(List<DamageData> injuries) {
@@ -96,7 +97,7 @@ public class DamageRecord {
     }
 
     public CompoundTag toLimitedNbt(int limit) {
-        if (limit <= 0) {
+        if (limit <= 0 || injuries.size() <= limit) {
             return toNbt();
         }
         List<DamageData> list = injuries.stream().sorted(Comparator.comparing(DamageData::getTime)).toList();

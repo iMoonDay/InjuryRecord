@@ -1,8 +1,10 @@
 package com.imoonday.injuryrecord;
 
+import com.imoonday.injuryrecord.data.DamageData;
 import com.imoonday.injuryrecord.data.HistoricalInjuryData;
 import com.imoonday.injuryrecord.network.Network;
 import com.imoonday.injuryrecord.network.SendRecordsS2CPacket;
+import com.imoonday.injuryrecord.network.SyncNewDataS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -34,26 +36,28 @@ public class EventHandler {
 
 
     /**
-     * 玩家受伤时，记录伤害数据
+     * 玩家受伤时，记录伤害数据，并向客户端同步数据
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPlayerDamage(LivingDamageEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             MinecraftServer server = player.server;
             HistoricalInjuryData data = HistoricalInjuryData.fromServer(server);
-            data.addInjury(player, event.getSource(), false, event.getAmount(), System.currentTimeMillis());
+            DamageData damageData = data.addInjury(player, event.getSource(), false, event.getAmount(), System.currentTimeMillis());
+            Network.INSTANCE.send(PacketDistributor.ALL.noArg(), new SyncNewDataS2CPacket(player.getUUID(), damageData));
         }
     }
 
     /**
-     * 玩家死亡时，记录伤害数据
+     * 玩家死亡时，记录伤害数据，并向客户端同步数据
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPlayerDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             MinecraftServer server = player.server;
             HistoricalInjuryData data = HistoricalInjuryData.fromServer(server);
-            data.addInjury(player, event.getSource(), true, -1, System.currentTimeMillis());
+            DamageData damageData = data.addInjury(player, event.getSource(), true, -1, System.currentTimeMillis());
+            Network.INSTANCE.send(PacketDistributor.ALL.noArg(), new SyncNewDataS2CPacket(player.getUUID(), damageData));
         }
     }
 }
