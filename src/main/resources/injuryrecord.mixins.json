@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.imoonday.injuryrecord.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "injuryrecord.refmap.json",
+  "mixins": [
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

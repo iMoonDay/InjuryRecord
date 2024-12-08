@@ -1,0 +1,17 @@
+{
+  "dimension.minecraft.end": "End",
+  "dimension.minecraft.nether": "Nether",
+  "dimension.minecraft.overworld": "Overworld",
+  "item.injuryrecord.historical_damage_viewer": "Historical Damage Viewer",
+  "message.injuryrecord.no_record_found": "No record found with Uuid %s",
+  "screen.injuryrecord.damage": "Damage: %d",
+  "screen.injuryrecord.dead": "Dead",
+  "screen.injuryrecord.get_complete_data": "Get Complete Data",
+  "screen.injuryrecord.get_offline_data": "Get offline Data",
+  "screen.injuryrecord.location": "%s %d %d %d",
+  "screen.injuryrecord.offline": "%s (Offline)",
+  "screen.injuryrecord.refresh": "Refresh",
+  "screen.injuryrecord.source": "Source: %s",
+  "screen.injuryrecord.syncing": "Syncing...",
+  "screen.injuryrecord.title": "Damage Records"
+}

@@ -1,0 +1,17 @@
+{
+  "dimension.minecraft.end": "末地",
+  "dimension.minecraft.nether": "下界",
+  "dimension.minecraft.overworld": "主世界",
+  "item.injuryrecord.historical_damage_viewer": "历史伤害查看器",
+  "message.injuryrecord.no_record_found": "未找到 Uuid 为 %s 的记录",
+  "screen.injuryrecord.damage": "伤害: %d",
+  "screen.injuryrecord.dead": "死亡",
+  "screen.injuryrecord.get_complete_data": "获取完整数据",
+  "screen.injuryrecord.get_offline_data": "获取离线数据",
+  "screen.injuryrecord.location": "%s %d %d %d",
+  "screen.injuryrecord.offline": "%s (离线)",
+  "screen.injuryrecord.refresh": "刷新数据",
+  "screen.injuryrecord.source": "来源: %s",
+  "screen.injuryrecord.syncing": "等待同步...",
+  "screen.injuryrecord.title": "伤害记录"
+}
