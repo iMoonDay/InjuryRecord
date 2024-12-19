@@ -7,6 +7,8 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -22,7 +24,16 @@ public class DamageData {
     @Nullable
     private final Component attackerName;
     @Nullable
+    private final ItemStack attackerMainHandItem;
+    @Nullable
+    private final ItemStack attackerOffHandItem;
+    @Nullable
     private final Component directEntityName;
+    @Nullable
+    private final ItemStack directEntityMainHandItem;
+    @Nullable
+    private final ItemStack directEntityOffHandItem;
+    private final boolean isRemote;
     private final String msgId;
     private final float amount;
     private final GlobalPos location;
@@ -33,9 +44,32 @@ public class DamageData {
 
     public DamageData(DamageSource source, float amount, GlobalPos location, long time, boolean isDead, @Nullable Component deathMessage) {
         Entity entity = source.getEntity();
-        this.attackerName = entity != null ? entity.getDisplayName() : null;
+        if (entity != null) {
+            this.attackerName = entity.getDisplayName();
+        } else {
+            this.attackerName = null;
+        }
+        if (entity instanceof LivingEntity living) {
+            this.attackerMainHandItem = living.getMainHandItem().copy();
+            this.attackerOffHandItem = living.getOffhandItem().copy();
+        } else {
+            this.attackerMainHandItem = null;
+            this.attackerOffHandItem = null;
+        }
         Entity directEntity = source.getDirectEntity();
-        this.directEntityName = directEntity != null ? directEntity.getDisplayName() : null;
+        if (directEntity != null) {
+            this.directEntityName = directEntity.getDisplayName();
+        } else {
+            this.directEntityName = null;
+        }
+        if (directEntity instanceof LivingEntity living) {
+            this.directEntityMainHandItem = living.getMainHandItem().copy();
+            this.directEntityOffHandItem = living.getOffhandItem().copy();
+        } else {
+            this.directEntityMainHandItem = null;
+            this.directEntityOffHandItem = null;
+        }
+        this.isRemote = entity != directEntity;
         this.msgId = source.getMsgId();
         this.amount = amount;
         this.location = location;
@@ -44,9 +78,14 @@ public class DamageData {
         this.deathMessage = deathMessage;
     }
 
-    public DamageData(@Nullable Component attackerName, @Nullable Component directEntityName, String msgId, float amount, GlobalPos location, long time, boolean isDead, @Nullable Component deathMessage) {
+    public DamageData(@Nullable Component attackerName, @Nullable ItemStack attackerMainHandItem, @Nullable ItemStack attackerOffHandItem, @Nullable Component directEntityName, @Nullable ItemStack directEntityMainHandItem, @Nullable ItemStack directEntityOffHandItem, boolean isRemote, String msgId, float amount, GlobalPos location, long time, boolean isDead, @Nullable Component deathMessage) {
         this.attackerName = attackerName;
+        this.attackerMainHandItem = attackerMainHandItem;
+        this.attackerOffHandItem = attackerOffHandItem;
         this.directEntityName = directEntityName;
+        this.directEntityMainHandItem = directEntityMainHandItem;
+        this.directEntityOffHandItem = directEntityOffHandItem;
+        this.isRemote = isRemote;
         this.msgId = msgId;
         this.amount = amount;
         this.location = location;
@@ -60,9 +99,22 @@ public class DamageData {
         if (attackerName != null) {
             tag.putString("attackerName", Component.Serializer.toJson(attackerName));
         }
+        if (attackerMainHandItem != null) {
+            tag.put("attackerMainHandItem", attackerMainHandItem.save(new CompoundTag()));
+        }
+        if (attackerOffHandItem != null) {
+            tag.put("attackerOffHandItem", attackerOffHandItem.save(new CompoundTag()));
+        }
         if (directEntityName != null) {
             tag.putString("directEntityName", Component.Serializer.toJson(directEntityName));
         }
+        if (directEntityMainHandItem != null) {
+            tag.put("directEntityMainHandItem", directEntityMainHandItem.save(new CompoundTag()));
+        }
+        if (directEntityOffHandItem != null) {
+            tag.put("directEntityOffHandItem", directEntityOffHandItem.save(new CompoundTag()));
+        }
+        tag.putBoolean("isRemote", isRemote);
         tag.putString("msgId", msgId);
         tag.putFloat("amount", amount);
         GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, location).resultOrPartial(LOGGER::error).ifPresent(locationTag -> tag.put("location", locationTag));
@@ -78,8 +130,28 @@ public class DamageData {
         return attackerName;
     }
 
+    public @Nullable ItemStack getAttackerMainHandItem() {
+        return attackerMainHandItem;
+    }
+
+    public @Nullable ItemStack getAttackerOffHandItem() {
+        return attackerOffHandItem;
+    }
+
     public @Nullable Component getDirectEntityName() {
         return directEntityName;
+    }
+
+    public @Nullable ItemStack getDirectEntityMainHandItem() {
+        return directEntityMainHandItem;
+    }
+
+    public @Nullable ItemStack getDirectEntityOffHandItem() {
+        return directEntityOffHandItem;
+    }
+
+    public boolean isRemote() {
+        return isRemote;
     }
 
     public String getMsgId() {
@@ -115,13 +187,18 @@ public class DamageData {
 
     public static DamageData fromNbt(CompoundTag tag) {
         Component attackerName = tag.contains("attackerName") ? Component.Serializer.fromJson(tag.getString("attackerName")) : null;
+        ItemStack attackerMainHandItem = tag.contains("attackerMainHandItem") ? ItemStack.of(tag.getCompound("attackerMainHandItem")) : null;
+        ItemStack attackerOffHandItem = tag.contains("attackerOffHandItem") ? ItemStack.of(tag.getCompound("attackerOffHandItem")) : null;
         Component directEntityName = tag.contains("directEntityName") ? Component.Serializer.fromJson(tag.getString("directEntityName")) : null;
+        ItemStack directEntityMainHandItem = tag.contains("directEntityMainHandItem") ? ItemStack.of(tag.getCompound("directEntityMainHandItem")) : null;
+        ItemStack directEntityOffHandItem = tag.contains("directEntityOffHandItem") ? ItemStack.of(tag.getCompound("directEntityOffHandItem")) : null;
+        boolean isRemote = tag.getBoolean("isRemote");
         String msgId = tag.getString("msgId");
         float amount = tag.getFloat("amount");
         GlobalPos location = GlobalPos.CODEC.parse(NbtOps.INSTANCE, tag.get("location")).resultOrPartial(LOGGER::error).orElse(null);
         long time = tag.getLong("time");
         boolean isDead = tag.getBoolean("isDead");
         Component deathMessage = tag.contains("deathMessage") ? Component.Serializer.fromJson(tag.getString("deathMessage")) : null;
-        return new DamageData(attackerName, directEntityName, msgId, amount, location, time, isDead, deathMessage);
+        return new DamageData(attackerName, attackerMainHandItem, attackerOffHandItem, directEntityName, directEntityMainHandItem, directEntityOffHandItem, isRemote, msgId, amount, location, time, isDead, deathMessage);
     }
 }

@@ -1,5 +1,6 @@
 package com.imoonday.injuryrecord.data;
 
+import com.imoonday.injuryrecord.Config;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -19,7 +20,6 @@ import java.util.UUID;
  */
 public class DamageRecord {
 
-    private static final int MAX_DATA_COUNT = 1000;
     private final UUID uuid;
     private final Component name;
     private final List<DamageData> injuries = new ArrayList<>();
@@ -34,7 +34,8 @@ public class DamageRecord {
         this.uuid = uuid;
         this.name = name;
         this.injuries.addAll(injuries);
-        handleUpLimit(MAX_DATA_COUNT);
+        handleUpLimit(getMaxDataCount());
+        sortInjuries();
     }
 
     public UUID getUuid() {
@@ -51,19 +52,22 @@ public class DamageRecord {
 
     public void addInjury(DamageData injury) {
         injuries.add(injury);
-        handleUpLimit(MAX_DATA_COUNT);
+        handleUpLimit(getMaxDataCount());
+        sortInjuries();
     }
 
     public DamageData addInjury(DamageSource source, float amount, GlobalPos location, long time, boolean isDead, @Nullable Component deathMessage) {
         DamageData data = new DamageData(source, amount, location, time, isDead, deathMessage);
         injuries.add(data);
-        handleUpLimit(MAX_DATA_COUNT);
+        handleUpLimit(getMaxDataCount());
+        sortInjuries();
         return data;
     }
 
     public void setInjuries(List<DamageData> injuries) {
         this.injuries.clear();
         this.injuries.addAll(injuries);
+        sortInjuries();
     }
 
     private void handleUpLimit(int limit) {
@@ -81,6 +85,10 @@ public class DamageRecord {
 
     public boolean isIncomplete() {
         return isIncomplete;
+    }
+
+    public void sortInjuries() {
+        injuries.sort(Comparator.comparing(DamageData::getTime));
     }
 
     public CompoundTag toNbt() {
@@ -128,9 +136,16 @@ public class DamageRecord {
         for (int i = 0; i < listTag.size(); i++) {
             CompoundTag injuryTag = listTag.getCompound(i);
             DamageData injury = DamageData.fromNbt(injuryTag);
-            record.addInjury(injury);
+            record.injuries.add(injury);
         }
+        record.handleUpLimit(getMaxDataCount());
+        record.sortInjuries();
         record.isIncomplete = tag.getBoolean("isIncomplete");
         return record;
+    }
+
+    public static int getMaxDataCount() {
+        Integer i = Config.maxDataCount.get();
+        return i == null ? 1000 : i;
     }
 }

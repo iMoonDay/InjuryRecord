@@ -15,6 +15,7 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -319,6 +320,8 @@ public class DamageRecordListScreen extends Screen {
         public class Entry extends ObjectSelectionList.Entry<DamageDataInfo.Entry> {
 
             private final DamageData data;
+            private boolean hasTooltip;
+            private int nameEndX = -1;
 
             public Entry(DamageData data) {
                 this.data = data;
@@ -331,6 +334,8 @@ public class DamageRecordListScreen extends Screen {
 
             @Override
             public void render(@NotNull PoseStack pPoseStack, int pIndex, int pTop, int pLeft, int pWidth, int pHeight, int pMouseX, int pMouseY, boolean pIsMouseOver, float pPartialTick) {
+                hasTooltip = false;
+                nameEndX = -1;
                 renderData(pPoseStack, pMouseX, pMouseY, pLeft, pTop, pWidth, pHeight, data, pIsMouseOver);
             }
 
@@ -345,7 +350,9 @@ public class DamageRecordListScreen extends Screen {
                 renderDamage(poseStack, x, startY2, dead, data, color);
                 renderTime(poseStack, x + width, startY2, data, color);
 
-                if (dead) {
+                renderItems(poseStack, x + width / 2 - 36, y + (height - 16) / 2, mouseX, mouseY, data);
+
+                if (dead && !hasTooltip) {
                     Component deathMessage = data.getDeathMessage();
                     if (deathMessage != null && isMouseOver) {
                         renderTooltip(poseStack, deathMessage, mouseX, mouseY);
@@ -380,13 +387,49 @@ public class DamageRecordListScreen extends Screen {
                 Component name = data.getDirectEntityName();
                 if (name == null) {
                     name = Component.literal(data.getMsgId());
-                } else {
+                } else if (data.isRemote()) {
                     Component attackerName = data.getAttackerName();
-                    if (attackerName != null && !attackerName.getContents().equals(name.getContents())) {
+                    if (attackerName != null) {
                         name = name.copy().append(" (").append(attackerName).append(")");
                     }
                 }
-                font.draw(poseStack, Component.translatable("screen.injuryrecord.source", name), x + 4, y, color);
+                MutableComponent text = Component.translatable("screen.injuryrecord.source", name);
+                font.draw(poseStack, text, x + 4, y, color);
+
+                nameEndX = x + 4 + font.width(text);
+            }
+
+            private void renderItems(PoseStack poseStack, int x, int y, int mouseX, int mouseY, DamageData data) {
+                if (nameEndX != -1 && x < nameEndX) {
+                    y += font.lineHeight - 1;
+                }
+
+                if (renderItem(poseStack, x, y, mouseX, mouseY, data.getAttackerMainHandItem())) {
+                    x += 18;
+                }
+                if (renderItem(poseStack, x, y, mouseX, mouseY, data.getAttackerOffHandItem())) {
+                    x += 18;
+                }
+
+                if (!data.isRemote()) return;
+
+                if (renderItem(poseStack, x, y, mouseX, mouseY, data.getDirectEntityMainHandItem())) {
+                    x += 18;
+                }
+                renderItem(poseStack, x, y, mouseX, mouseY, data.getDirectEntityOffHandItem());
+            }
+
+            private boolean renderItem(PoseStack poseStack, int x, int y, int mouseX, int mouseY, ItemStack stack) {
+                if (stack == null || stack.isEmpty()) {
+                    return false;
+                }
+
+                itemRenderer.renderAndDecorateItem(stack, x, y);
+                if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16 && !hasTooltip) {
+                    renderTooltip(poseStack, stack, mouseX, mouseY);
+                    hasTooltip = true;
+                }
+                return true;
             }
         }
     }
