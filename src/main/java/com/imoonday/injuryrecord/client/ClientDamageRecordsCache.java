@@ -16,10 +16,6 @@ public class ClientDamageRecordsCache {
 
     private final Map<UUID, DamageRecord> clientDamageRecords = new HashMap<>();
 
-    public void addRecord(DamageRecord damageRecord) {
-        clientDamageRecords.put(damageRecord.getUuid(), damageRecord);
-    }
-
     public Map<UUID, DamageRecord> getRecords() {
         return new HashMap<>(clientDamageRecords);
     }
@@ -33,8 +29,17 @@ public class ClientDamageRecordsCache {
         clientDamageRecords.putAll(damageRecords);
     }
 
-    public void updateRecord(UUID uuid, DamageRecord damageRecord) {
-        clientDamageRecords.put(uuid, damageRecord);
+    public void updateRecord(DamageRecord damageRecord, boolean overwrite) {
+        if (overwrite) {
+            clientDamageRecords.put(damageRecord.getUuid(), damageRecord);
+        } else {
+            DamageRecord oldRecord = clientDamageRecords.get(damageRecord.getUuid());
+            if (oldRecord != null) {
+                oldRecord.addInjuries(damageRecord.getInjuries());
+            } else {
+                clientDamageRecords.put(damageRecord.getUuid(), damageRecord);
+            }
+        }
     }
 
     public boolean addInjury(UUID uuid, DamageData data) {

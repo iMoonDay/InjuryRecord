@@ -23,7 +23,6 @@ public class DamageRecord {
     private final UUID uuid;
     private final Component name;
     private final List<DamageData> injuries = new ArrayList<>();
-    private boolean isIncomplete;
 
     public DamageRecord(UUID uuid, Component name) {
         this.uuid = uuid;
@@ -56,6 +55,12 @@ public class DamageRecord {
         sortInjuries();
     }
 
+    public void addInjuries(List<DamageData> injuries) {
+        this.injuries.addAll(injuries);
+        handleUpLimit(getMaxDataCount());
+        sortInjuries();
+    }
+
     public DamageData addInjury(DamageSource source, float amount, GlobalPos location, long time, boolean isDead, @Nullable Component deathMessage) {
         DamageData data = new DamageData(source, amount, location, time, isDead, deathMessage);
         injuries.add(data);
@@ -83,10 +88,6 @@ public class DamageRecord {
         setInjuries(list);
     }
 
-    public boolean isIncomplete() {
-        return isIncomplete;
-    }
-
     public void sortInjuries() {
         injuries.sort(Comparator.comparing(DamageData::getTime));
     }
@@ -100,30 +101,32 @@ public class DamageRecord {
             listTag.add(injury.toNbt());
         }
         tag.put("injuries", listTag);
-        tag.putBoolean("isIncomplete", false);
         return tag;
     }
 
-    public CompoundTag toLimitedNbt(int limit) {
+    public List<DamageRecord> split(int limit) {
         if (limit <= 0 || injuries.size() <= limit) {
-            return toNbt();
+            return List.of(this);
         }
+        List<DamageRecord> records = new ArrayList<>();
         List<DamageData> list = injuries.stream().sorted(Comparator.comparing(DamageData::getTime)).toList();
         int size = list.size();
         if (limit > size) {
             limit = size;
         }
-        list = list.subList(size - limit, size);
-        CompoundTag tag = new CompoundTag();
-        tag.putUUID("uuid", uuid);
-        tag.putString("name", Component.Serializer.toJson(name));
-        ListTag listTag = new ListTag();
-        for (DamageData injury : list) {
-            listTag.add(injury.toNbt());
+        int start = 0;
+        int end = limit;
+        while (start < size) {
+            List<DamageData> subList = list.subList(start, end);
+            DamageRecord record = new DamageRecord(uuid, name, subList);
+            records.add(record);
+            start = end;
+            end += limit;
+            if (end > size) {
+                end = size;
+            }
         }
-        tag.put("injuries", listTag);
-        tag.putBoolean("isIncomplete", true);
-        return tag;
+        return records;
     }
 
     public static DamageRecord fromNbt(CompoundTag tag) {
@@ -140,12 +143,11 @@ public class DamageRecord {
         }
         record.handleUpLimit(getMaxDataCount());
         record.sortInjuries();
-        record.isIncomplete = tag.getBoolean("isIncomplete");
         return record;
     }
 
     public static int getMaxDataCount() {
         Integer i = Config.maxDataCount.get();
-        return i == null ? 1000 : i;
+        return i == null ? 10000 : i;
     }
 }

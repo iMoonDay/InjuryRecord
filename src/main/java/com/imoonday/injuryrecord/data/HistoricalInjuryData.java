@@ -53,7 +53,7 @@ public class HistoricalInjuryData extends SavedData {
     }
 
     public Map<UUID, DamageRecord> getDamageRecords() {
-        return new HashMap<>(damageRecords);
+        return damageRecords;
     }
 
     public Map<UUID, DamageRecord> getOnlineRecords(MinecraftServer server) {
@@ -65,15 +65,20 @@ public class HistoricalInjuryData extends SavedData {
     }
 
     public void addInjury(Player player, DamageData data) {
-        damageRecords.computeIfAbsent(player.getUUID(), uuid -> new DamageRecord(uuid, player.getDisplayName())).addInjury(data);
+        getDamageRecord(player).addInjury(data);
     }
 
     public DamageData addInjury(Player player, DamageSource source, boolean isDead, float amount, long time) {
-        return damageRecords.computeIfAbsent(player.getUUID(), uuid -> new DamageRecord(uuid, player.getDisplayName())).addInjury(source, amount, GlobalPos.of(player.level.dimension(), player.blockPosition()), time, isDead, source.getLocalizedDeathMessage(player));
+        return getDamageRecord(player).addInjury(source, amount, GlobalPos.of(player.level.dimension(), player.blockPosition()), time, isDead, source.getLocalizedDeathMessage(player));
     }
 
     public List<DamageData> getInjuries(Player player) {
-        return damageRecords.computeIfAbsent(player.getUUID(), uuid -> new DamageRecord(uuid, player.getDisplayName())).getInjuries();
+        return getDamageRecord(player).getInjuries();
+    }
+
+    @NotNull
+    public DamageRecord getDamageRecord(Player player) {
+        return damageRecords.computeIfAbsent(player.getUUID(), uuid -> new DamageRecord(uuid, player.getDisplayName()));
     }
 
     public static HistoricalInjuryData fromServer(MinecraftServer server) {

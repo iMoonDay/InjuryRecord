@@ -10,6 +10,8 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -55,13 +57,38 @@ public class RequestRecordsC2SRequest implements NetworkPacket {
             if (targetUuid != null) {
                 DamageRecord record = data.getDamageRecord(targetUuid);
                 if (record != null) {
-                    Network.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new UpdateRecordsS2CPacket(targetUuid, record));
+                    List<DamageRecord> split = record.split(MAX_RECORD_COUNT);
+                    int size = split.size();
+                    for (int i = 0; i < size; i++) {
+                        DamageRecord damageRecord = split.get(i);
+                        Network.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new UpdateRecordsS2CPacket(damageRecord, i == 0, false, i == size - 1));
+                    }
                 } else {
                     player.sendSystemMessage(Component.translatable("message.injuryrecord.no_record_found", targetUuid));
                 }
             } else {
+                boolean cleared = false;
                 Map<UUID, DamageRecord> records = includeOffline ? data.getDamageRecords() : data.getOnlineRecords(server);
-                Network.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SendRecordsS2CPacket(records, MAX_RECORD_COUNT));
+
+                if (records.isEmpty() && !includeOffline) {
+                    records = data.getDamageRecords();
+                }
+
+                Iterator<DamageRecord> iterator = records.values().iterator();
+                if (iterator.hasNext()) {
+                    do {
+                        DamageRecord damageRecord = iterator.next();
+                        List<DamageRecord> split = damageRecord.split(MAX_RECORD_COUNT);
+                        int size = split.size();
+                        for (int i = 0; i < size; i++) {
+                            DamageRecord record = split.get(i);
+                            Network.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new UpdateRecordsS2CPacket(record, i == 0, !cleared, i == size - 1 && !iterator.hasNext()));
+                            cleared = true;
+                        }
+                    } while (iterator.hasNext());
+                } else {
+                    Network.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new UpdateRecordsS2CPacket(data.getDamageRecord(player), true, true, true));
+                }
             }
         }
     }

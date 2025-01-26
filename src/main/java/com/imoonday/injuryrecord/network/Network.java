@@ -23,9 +23,9 @@ public class Network {
     public static void register() {
         int i = 0;
         INSTANCE.registerMessage(i++, RequestRecordsC2SRequest.class, RequestRecordsC2SRequest::encode, RequestRecordsC2SRequest::new, Network::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        INSTANCE.registerMessage(i++, SendRecordsS2CPacket.class, SendRecordsS2CPacket::encode, SendRecordsS2CPacket::new, Network::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         INSTANCE.registerMessage(i++, UpdateRecordsS2CPacket.class, UpdateRecordsS2CPacket::encode, UpdateRecordsS2CPacket::new, Network::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         INSTANCE.registerMessage(i++, SyncNewDataS2CPacket.class, SyncNewDataS2CPacket::encode, SyncNewDataS2CPacket::new, Network::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        INSTANCE.registerMessage(i++, RemoveRecordC2SRequest.class, RemoveRecordC2SRequest::encode, RemoveRecordC2SRequest::new, Network::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 
     private static <MSG extends NetworkPacket> void handle(MSG message, Supplier<NetworkEvent.Context> ctx) {

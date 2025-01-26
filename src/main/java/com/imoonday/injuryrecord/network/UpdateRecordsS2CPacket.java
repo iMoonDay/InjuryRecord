@@ -6,34 +6,43 @@ import com.imoonday.injuryrecord.data.DamageRecord;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.UUID;
-
 /**
  * 服务端向客户端发送更新的数据
  */
 public class UpdateRecordsS2CPacket implements NetworkPacket {
 
-    private final UUID uuid;
     private final DamageRecord record;
+    private final boolean overwrite;
+    private final boolean clear;
+    private final boolean finished;
 
-    public UpdateRecordsS2CPacket(UUID uuid, DamageRecord record) {
-        this.uuid = uuid;
+    public UpdateRecordsS2CPacket(DamageRecord record, boolean overwrite, boolean clear, boolean finished) {
         this.record = record;
+        this.overwrite = overwrite;
+        this.clear = clear;
+        this.finished = finished;
     }
 
     public UpdateRecordsS2CPacket(FriendlyByteBuf buffer) {
-        this(buffer.readUUID(), DamageRecord.fromNbt(buffer.readNbt()));
+        this(DamageRecord.fromNbt(buffer.readNbt()), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean());
     }
 
     @Override
     public void encode(FriendlyByteBuf buffer) {
-        buffer.writeUUID(uuid);
         buffer.writeNbt(record.toNbt());
+        buffer.writeBoolean(overwrite);
+        buffer.writeBoolean(clear);
+        buffer.writeBoolean(finished);
     }
 
     @Override
     public void handle(NetworkEvent.Context ctx) {
-        ClientDamageRecordsCache.INSTANCE.updateRecord(uuid, record);
-        ClientUtils.updateDamageRecordList();
+        if (clear) {
+            ClientDamageRecordsCache.INSTANCE.clearRecords();
+        }
+        ClientDamageRecordsCache.INSTANCE.updateRecord(record, overwrite);
+        if (finished) {
+            ClientUtils.updateDamageRecordList();
+        }
     }
 }

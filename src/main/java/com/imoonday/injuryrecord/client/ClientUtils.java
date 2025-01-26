@@ -2,10 +2,12 @@ package com.imoonday.injuryrecord.client;
 
 import com.imoonday.injuryrecord.data.DamageData;
 import com.imoonday.injuryrecord.network.Network;
+import com.imoonday.injuryrecord.network.RemoveRecordC2SRequest;
 import com.imoonday.injuryrecord.network.RequestRecordsC2SRequest;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
@@ -38,6 +40,10 @@ public class ClientUtils {
 
     public static void requestRecords(UUID uuid, boolean includeOffline) {
         Network.INSTANCE.sendToServer(new RequestRecordsC2SRequest(uuid, includeOffline));
+    }
+
+    public static void requestRemoveRecord(@Nullable UUID uuid, boolean includeOffline) {
+        Network.INSTANCE.sendToServer(new RemoveRecordC2SRequest(uuid, includeOffline));
     }
 
     public static boolean isOffline(UUID uuid) {

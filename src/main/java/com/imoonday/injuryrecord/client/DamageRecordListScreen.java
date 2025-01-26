@@ -1,5 +1,6 @@
 package com.imoonday.injuryrecord.client;
 
+import com.imoonday.injuryrecord.Config;
 import com.imoonday.injuryrecord.data.DamageData;
 import com.imoonday.injuryrecord.data.DamageRecord;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -8,7 +9,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.PlainTextButton;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -25,7 +28,6 @@ import java.util.*;
  */
 public class DamageRecordListScreen extends Screen {
 
-    private PlainTextButton textButton;
     private DamageRecordList damageRecordList;
     public DamageDataInfo damageDataInfo;
     private DamageRecord selectedRecord;
@@ -39,6 +41,7 @@ public class DamageRecordListScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+
         int listWidth = width / 5;
         this.damageRecordList = new DamageRecordList(minecraft, listWidth, height, 20, height - 20, 20);
         addRenderableWidget(this.damageRecordList);
@@ -48,26 +51,57 @@ public class DamageRecordListScreen extends Screen {
 
         int buttonY = height - 20 + (20 - font.lineHeight) / 2 + 1;
 
-        MutableComponent message = Component.translatable("screen.injuryrecord.get_complete_data");
-        int textWidth = font.width(message);
-        textButton = new PlainTextButton(width - textWidth - 5, buttonY, textWidth, font.lineHeight + 1, message, button -> requestFullData(), font);
-        if (synced) {
-            updateTextButton();
-            addRenderableWidget(textButton);
-        }
-
-        MutableComponent message1 = Component.translatable("screen.injuryrecord.refresh");
-        int textWidth1 = font.width(message1);
-        PlainTextButton refreshButton = new PlainTextButton((listWidth - textWidth1) / 2, buttonY, textWidth1, font.lineHeight + 1, message1, button -> ClientUtils.requestRecords(includeOffline), font);
+        MutableComponent refreshMessage = Component.translatable("screen.injuryrecord.refresh");
+        int textWidth = font.width(refreshMessage);
+        PlainTextButton refreshButton = new PlainTextButton((listWidth - textWidth) / 2, buttonY, textWidth, font.lineHeight + 1, refreshMessage, button -> ClientUtils.requestRecords(includeOffline), font);
         addRenderableWidget(refreshButton);
 
+        Boolean permission = Config.removePermission.get();
+
+        MutableComponent deleteAllMessage = Component.translatable("screen.injuryrecord.delete_all");
+        int textWidth1 = font.width(deleteAllMessage);
+        PlainTextButton deleteAllButton = new PlainTextButton(width - textWidth1 - 5, buttonY, textWidth1, font.lineHeight + 1, deleteAllMessage, button -> {
+            minecraft.setScreen(new ConfirmScreen(b -> {
+                if (b) {
+                    ClientUtils.requestRemoveRecord(null, includeOffline);
+                }
+                minecraft.setScreen(this);
+            }, Component.translatable("screen.injuryrecord.confirm.title.all"), Component.translatable("screen.injuryrecord.confirm.message")));
+        }, font);
+        addRenderableWidget(deleteAllButton);
+
+        MutableComponent deleteSelectedMessage = Component.translatable("screen.injuryrecord.delete_selected");
+        int textWidth2 = font.width(deleteSelectedMessage);
+        PlainTextButton deleteSelectedButton = new PlainTextButton(deleteAllButton.x - textWidth2 - 5, buttonY, textWidth2, font.lineHeight + 1, deleteSelectedMessage, button -> {
+            if (selectedRecord != null) {
+                minecraft.setScreen(new ConfirmScreen(b -> {
+                    if (b) {
+                        ClientUtils.requestRemoveRecord(selectedRecord.getUuid(), includeOffline);
+                    }
+                    minecraft.setScreen(this);
+                }, Component.translatable("screen.injuryrecord.confirm.title.selected", selectedRecord.getName()), Component.translatable("screen.injuryrecord.confirm.message")));
+            }
+        }, font);
+        addRenderableWidget(deleteSelectedButton);
+
+        if (permission != null && permission) {
+            LocalPlayer player = minecraft.player;
+            if (player == null || !player.hasPermissions(2)) {
+                deleteAllButton.active = false;
+                deleteSelectedButton.active = false;
+            }
+        }
+
+        if (!includeOffline) {
+            includeOffline = damageRecordList.containsOffline();
+        }
         if (!includeOffline) {
             MutableComponent message2 = Component.translatable("screen.injuryrecord.get_offline_data");
-            int textWidth2 = font.width(message2);
-            PlainTextButton requestOfflineButton = new PlainTextButton(width - textWidth2 - 5, 6, textWidth2, font.lineHeight, message2, button -> {
+            int textWidth3 = font.width(message2);
+            PlainTextButton requestOfflineButton = new PlainTextButton(width - textWidth3 - 5, 6, textWidth3, font.lineHeight, message2, button -> {
                 includeOffline = true;
-                ClientUtils.requestRecords(true);
                 synced = false;
+                ClientUtils.requestRecords(true);
             }, font);
             addRenderableWidget(requestOfflineButton);
         }
@@ -129,18 +163,10 @@ public class DamageRecordListScreen extends Screen {
         }
     }
 
-    public void requestFullData() {
-        if (selectedRecord != null) {
-            ClientUtils.requestRecords(selectedRecord.getUuid(), includeOffline);
-        }
-    }
-
-    public void updateTextButton() {
-        if (textButton != null) {
-            boolean active = selectedRecord != null && selectedRecord.isIncomplete();
-            textButton.active = active;
-            textButton.visible = active;
-        }
+    @Override
+    public void onClose() {
+        super.onClose();
+        ClientDamageRecordsCache.INSTANCE.clearRecords();
     }
 
     public class DamageRecordList extends ObjectSelectionList<DamageRecordList.Entry> {
@@ -164,7 +190,6 @@ public class DamageRecordListScreen extends Screen {
                 setFocused(first);
                 selectedRecord = first.record;
                 updateInfo();
-                updateTextButton();
             }
         }
 
@@ -212,7 +237,6 @@ public class DamageRecordListScreen extends Screen {
                 }
             }
             updateInfo();
-            updateTextButton();
 
             if (focusedEntry != null) {
                 damageRecordList.setFocused(focusedEntry);
@@ -224,6 +248,10 @@ public class DamageRecordListScreen extends Screen {
 
         public void addInjury(UUID uuid, DamageData data) {
             children().stream().filter(entry -> entry.record.getUuid().equals(uuid)).findFirst().ifPresent(entry -> entry.addInjury(data));
+        }
+
+        public boolean containsOffline() {
+            return children().stream().anyMatch(entry -> ClientUtils.isOffline(entry.record.getUuid()));
         }
 
         public class Entry extends ObjectSelectionList.Entry<DamageRecordList.Entry> {
@@ -260,7 +288,6 @@ public class DamageRecordListScreen extends Screen {
                 if (pButton == 0) {
                     selectedRecord = record;
                     updateInfo();
-                    updateTextButton();
                     return true;
                 }
                 return super.mouseClicked(pMouseX, pMouseY, pButton);
@@ -322,6 +349,7 @@ public class DamageRecordListScreen extends Screen {
             private final DamageData data;
             private boolean hasTooltip;
             private int nameEndX = -1;
+            private int locationStartX = -1;
 
             public Entry(DamageData data) {
                 this.data = data;
@@ -345,8 +373,8 @@ public class DamageRecordListScreen extends Screen {
                 boolean dead = data.isDead();
                 int color = dead ? 0xFF0000 : 0xFFFFFF;
 
-                renderName(poseStack, x, startY, data, color);
                 renderLocation(poseStack, x + width, startY, data, color);
+                renderName(poseStack, x, startY, mouseX, mouseY, data, color);
                 renderDamage(poseStack, x, startY2, dead, data, color);
                 renderTime(poseStack, x + width, startY2, data, color);
 
@@ -355,7 +383,7 @@ public class DamageRecordListScreen extends Screen {
                 if (dead && !hasTooltip) {
                     Component deathMessage = data.getDeathMessage();
                     if (deathMessage != null && isMouseOver) {
-                        renderTooltip(poseStack, deathMessage, mouseX, mouseY);
+                        renderTooltip(poseStack, font.split(deathMessage, DamageRecordListScreen.this.width / 3), mouseX, mouseY);
                     }
                 }
             }
@@ -366,11 +394,12 @@ public class DamageRecordListScreen extends Screen {
             }
 
             private void renderDamage(PoseStack poseStack, int x, int y, boolean dead, DamageData data, int color) {
-                String amount = String.format("%.1f", data.getAmount());
-                if (amount.endsWith(".0")) {
-                    amount = amount.substring(0, amount.length() - 2);
+                float amount = data.getAmount();
+                String amountString = Float.compare(amount, Float.MAX_VALUE) >= 0 ? "∞" : String.format("%.1f", amount);
+                if (amountString.endsWith(".0")) {
+                    amountString = amountString.substring(0, amountString.length() - 2);
                 }
-                MutableComponent damageText = dead ? Component.translatable("screen.injuryrecord.dead") : Component.translatable("screen.injuryrecord.damage", amount);
+                MutableComponent damageText = dead ? Component.translatable("screen.injuryrecord.dead") : Component.translatable("screen.injuryrecord.damage", amountString);
                 font.draw(poseStack, damageText, x + 4, y, color);
             }
 
@@ -380,10 +409,14 @@ public class DamageRecordListScreen extends Screen {
                 BlockPos pos = location.pos();
                 String dimensionKey = "dimension." + dimensionId.toLanguageKey();
                 Component locationText = Component.translatable("screen.injuryrecord.location", I18n.exists(dimensionKey) ? I18n.get(dimensionKey) : dimensionId.toString(), pos.getX(), pos.getY(), pos.getZ());
-                font.draw(poseStack, locationText, right - 4 - font.width(locationText), y, color);
+
+                int x = right - 4 - font.width(locationText);
+                font.draw(poseStack, locationText, x, y, color);
+
+                locationStartX = x;
             }
 
-            private void renderName(PoseStack poseStack, int x, int y, DamageData data, int color) {
+            private void renderName(PoseStack poseStack, int x, int y, int mouseX, int mouseY, DamageData data, int color) {
                 Component name = data.getDirectEntityName();
                 if (name == null) {
                     name = Component.literal(data.getMsgId());
@@ -394,9 +427,20 @@ public class DamageRecordListScreen extends Screen {
                     }
                 }
                 MutableComponent text = Component.translatable("screen.injuryrecord.source", name);
-                font.draw(poseStack, text, x + 4, y, color);
 
                 nameEndX = x + 4 + font.width(text);
+
+                if (locationStartX == -1 || nameEndX < locationStartX - 4) {
+                    font.draw(poseStack, text, x + 4, y, color);
+                } else {
+                    String string = font.substrByWidth(text, locationStartX - x - 4 - 4).getString();
+                    String finalString = string.substring(0, string.length() - 3) + "...";
+                    font.draw(poseStack, finalString, x + 4, y, color);
+                    if (mouseX >= x + 4 && mouseX <= x + 4 + font.width(finalString) && mouseY >= y && mouseY < y + font.lineHeight) {
+                        renderTooltip(poseStack, font.split(name, DamageRecordListScreen.this.width / 3), mouseX, mouseY);
+                        hasTooltip = true;
+                    }
+                }
             }
 
             private void renderItems(PoseStack poseStack, int x, int y, int mouseX, int mouseY, DamageData data) {
